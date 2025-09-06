@@ -2,62 +2,20 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function fetchHotTopic(page = 1) {
     try {
-        console.log("🔑 API Key exists:", !!process.env.NEXT_PUBLIC_NEWS_API_KEY);
+        console.log("🔥 Fetching hot topics, page:", page);
         
-        if (!process.env.NEXT_PUBLIC_NEWS_API_KEY) {
-            throw new Error("API key is not defined in the environment variables.");
-        }
-
-        let articles = [];
+        // Use our proxy API instead of calling NewsAPI directly
+        const response = await fetch(`/api/news?type=hot&pageSize=10&page=${page}`);
         
-        // Try multiple approaches to get news
-        try {
-            // Approach 1: Try top headlines first (more reliable)
-            const topHeadlinesUrl = `https://newsapi.org/v2/top-headlines?country=us&pageSize=10&page=${page}&apiKey=${process.env.NEXT_PUBLIC_NEWS_API_KEY}`;
-            console.log("📡 Trying top headlines API...");
-            
-            const response = await fetch(topHeadlinesUrl, {
-                method: 'GET',
-                headers: {
-                    'User-Agent': 'PalmNews/1.0',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                articles = data.articles || [];
-                console.log("📰 Top headlines found:", articles.length);
-            }
-        } catch (error) {
-            console.log("⚠️ Top headlines failed, trying everything endpoint...");
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`API Error: ${errorData.message || response.status}`);
         }
 
-        // Approach 2: If no articles, try everything endpoint
-        if (articles.length === 0) {
-            try {
-                const fromDate = new Date();
-                fromDate.setDate(fromDate.getDate() - 3); // Reduced to 3 days for better results
-                const fromDateString = fromDate.toISOString().split('T')[0];
-                
-                const everythingUrl = `https://newsapi.org/v2/everything?q=news&from=${fromDateString}&sortBy=popularity&language=en&pageSize=10&page=${page}&apiKey=${process.env.NEXT_PUBLIC_NEWS_API_KEY}`;
-                console.log("📡 Trying everything API...");
-                
-                const response = await fetch(everythingUrl, {
-                    method: 'GET',
-                    headers: {
-                        'User-Agent': 'PalmNews/1.0',
-                    },
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    articles = data.articles || [];
-                    console.log("📰 Everything articles found:", articles.length);
-                }
-            } catch (error) {
-                console.error("❌ Everything endpoint failed:", error);
-            }
-        }
+        const data = await response.json();
+        let articles = data.articles || [];
+        
+        console.log("📰 Hot topics found:", articles.length);
 
         // Filter out articles without proper content
         articles = articles.filter(article => 
@@ -90,7 +48,7 @@ export async function fetchHotTopic(page = 1) {
 "${contentToSummarize}"`;
 
                     const result = await model.generateContent(prompt);
-                    const response = await result.response;
+                    const response = result.response;
                     article.summary = response.text();
                 } else {
                     article.summary = article.description || "Summary not available";
@@ -123,62 +81,20 @@ export async function fetchHotTopic(page = 1) {
 
 export async function fetchCategoryNews(category, page = 1) {
     try {
-        console.log("🔑 API Key exists:", !!process.env.NEXT_PUBLIC_NEWS_API_KEY);
         console.log("📂 Fetching category:", category, "page:", page);
         
-        if (!process.env.NEXT_PUBLIC_NEWS_API_KEY) {
-            throw new Error("API key is not defined in the environment variables.");
+        // Use our proxy API instead of calling NewsAPI directly
+        const response = await fetch(`/api/news?type=category&category=${encodeURIComponent(category)}&pageSize=10&page=${page}`);
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`API Error: ${errorData.message || response.status}`);
         }
 
-        let articles = [];
-
-        // Try category-specific top headlines first
-        try {
-            const categoryUrl = `https://newsapi.org/v2/top-headlines?country=us&category=${category}&pageSize=10&page=${page}&apiKey=${process.env.NEXT_PUBLIC_NEWS_API_KEY}`;
-            console.log("📡 Trying category headlines API...");
-            
-            const response = await fetch(categoryUrl, {
-                method: 'GET',
-                headers: {
-                    'User-Agent': 'PalmNews/1.0',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                articles = data.articles || [];
-                console.log("📰 Category headlines found:", articles.length);
-            }
-        } catch (error) {
-            console.log("⚠️ Category headlines failed, trying everything endpoint...");
-        }
-
-        // If no articles, try everything endpoint with category search
-        if (articles.length === 0) {
-            try {
-                const fromDate = new Date();
-                fromDate.setDate(fromDate.getDate() - 7);
-                const fromDateString = fromDate.toISOString().split('T')[0];
-                
-                const searchUrl = `https://newsapi.org/v2/everything?q=${category}&from=${fromDateString}&sortBy=popularity&language=en&pageSize=10&page=${page}&apiKey=${process.env.NEXT_PUBLIC_NEWS_API_KEY}`;
-                console.log("📡 Trying category search API...");
-                
-                const response = await fetch(searchUrl, {
-                    method: 'GET',
-                    headers: {
-                        'User-Agent': 'PalmNews/1.0',
-                    },
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    articles = data.articles || [];
-                    console.log("📰 Category search articles found:", articles.length);
-                }
-            } catch (error) {
-                console.error("❌ Category search failed:", error);
-            }
-        }
+        const data = await response.json();
+        let articles = data.articles || [];
+        
+        console.log("📰 Category articles found:", articles.length);
 
         // Filter out articles without proper content
         articles = articles.filter(article => 
@@ -211,7 +127,7 @@ export async function fetchCategoryNews(category, page = 1) {
 "${contentToSummarize}"`;
 
                     const result = await model.generateContent(prompt);
-                    const response = await result.response;
+                    const response = result.response;
                     article.summary = response.text();
                 } else {
                     article.summary = article.description || "Summary not available";
@@ -256,7 +172,7 @@ Provide a concise and informative response:
 "${query}"`;
 
         const result = await model.generateContent(prompt);
-        const response = await result.response;
+        const response = result.response;
         const answer = response.text();
 
         return {
